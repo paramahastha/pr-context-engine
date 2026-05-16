@@ -18,6 +18,7 @@ _AUTH_RE = re.compile(
 
 # Top-level function/method definition patterns for public-API deletion detection.
 # We only match lines with no leading whitespace (top-level scope).
+# TODO: extend to JS/TS (`export function`, arrow-function exports) for `deletes_public_api`
 _FUNC_DEF_RE = re.compile(
     r"^(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)"  # Python
     r"|^func\s+(?:\([^)]+\)\s+)?([A-Za-z_][A-Za-z0-9_]*)"  # Go

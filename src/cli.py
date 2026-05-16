@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 app = typer.Typer(help="PR Context Engine — brief a pull request.")
 
-_MAX_DIFF_CHARS = 32_000  # ~8k tokens; avoids hitting provider context limits on large PRs
+_MAX_DIFF_LINES = 4_000  # ~8k tokens; avoids hitting provider context limits on large PRs
 
 
 @app.callback()
@@ -43,12 +43,23 @@ def review(
 
     raw_diff = fetch_pr_diff(repo, pr, github_token)
     logger.info("Fetched diff (%d chars)", len(raw_diff))
-    if len(raw_diff) > _MAX_DIFF_CHARS:
-        logger.warning("Diff truncated from %d to %d chars", len(raw_diff), _MAX_DIFF_CHARS)
-        raw_diff = raw_diff[:_MAX_DIFF_CHARS]
 
     changes = parse_diff(raw_diff)
     logger.info("Parsed %d file changes", len(changes))
+
+    # Drop whole FileChanges once the running line budget is exhausted so the parser
+    # always sees complete hunks — slicing raw diff text mid-file leaves incomplete objects.
+    budget = _MAX_DIFF_LINES
+    trimmed: list[FileChange] = []
+    for change in changes:
+        file_lines = len(change.added_lines) + len(change.removed_lines)
+        if budget <= 0:
+            break
+        trimmed.append(change)
+        budget -= file_lines
+    if len(trimmed) < len(changes):
+        logger.warning("Dropped %d files beyond %d-line budget", len(changes) - len(trimmed), _MAX_DIFF_LINES)
+    changes = trimmed
 
     changed_symbols: dict[str, list[str]] = {}
     for change in changes:

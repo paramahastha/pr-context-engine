@@ -36,7 +36,7 @@ _PATTERNS["typescript"] = _PATTERNS["javascript"]
 
 
 def _names_via_regex(lines: list[str], language: str) -> list[str]:
-    patterns = _PATTERNS.get(language, _PATTERNS.get("python", []))
+    patterns = _PATTERNS.get(language, [])
     names: list[str] = []
     for line in lines:
         stripped = line.strip()
@@ -49,7 +49,7 @@ def _names_via_regex(lines: list[str], language: str) -> list[str]:
 
 
 def _names_via_ast(lines: list[str]) -> list[str]:
-    """Try to parse Python lines as a module and extract top-level def/class names.
+    """Try to parse Python lines as a module and extract def/class names at any depth.
 
     Returns an empty list on any parse failure — the caller falls back to regex.
     """
