@@ -4,8 +4,8 @@ import logging
 import typer
 from dotenv import load_dotenv
 
+from src.config import get_provider
 from src.github_api.comment_poster import fetch_pr_diff, post_pr_comment
-from src.llm.groq_provider import GroqProvider
 
 load_dotenv()  # populate env from a local .env for dev; harmless no-op in CI
 logging.basicConfig(level=logging.INFO)
@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(help="PR Context Engine — brief a pull request.")
 
 _PROMPT_TEMPLATE = "Summarize this diff in 3 bullets:\n\n{diff}"
+_MAX_DIFF_CHARS = 32_000  # ~8k tokens; avoids hitting provider context limits on large PRs
 
 
 @app.callback()
@@ -30,23 +31,24 @@ def main() -> None:
 def review(
     pr: int = typer.Option(..., "--pr", help="Pull request number."),
     repo: str = typer.Option(..., "--repo", help="Repository in owner/name form."),
-    groq_api_key: str | None = typer.Option(
-        None, envvar="GROQ_API_KEY", help="Groq API key."
-    ),
     github_token: str | None = typer.Option(
         None, envvar="GITHUB_TOKEN", help="GitHub token with pull-requests:write."
     ),
 ) -> None:
-    """Fetch a PR's diff, summarize it with Groq, and post the result as a comment."""
-    if not groq_api_key:
-        raise typer.BadParameter("GROQ_API_KEY is not set (flag or env var).")
+    """Fetch a PR's diff, summarize it with the configured LLM, and post the result."""
     if not github_token:
         raise typer.BadParameter("GITHUB_TOKEN is not set (flag or env var).")
 
     diff = fetch_pr_diff(repo, pr, github_token)
     logger.info("Fetched diff (%d chars)", len(diff))
+    if len(diff) > _MAX_DIFF_CHARS:
+        logger.warning("Diff truncated from %d to %d chars", len(diff), _MAX_DIFF_CHARS)
+        diff = diff[:_MAX_DIFF_CHARS]
 
-    provider = GroqProvider(api_key=groq_api_key)
+    try:
+        provider = get_provider()
+    except RuntimeError as exc:
+        raise typer.BadParameter(str(exc)) from exc
     summary = provider.generate(_PROMPT_TEMPLATE.format(diff=diff))
     logger.info("Generated summary (%d chars)", len(summary))
 

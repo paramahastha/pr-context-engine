@@ -9,18 +9,47 @@
 > results, data & privacy — is a Milestone 11 deliverable. What follows covers only
 > the current milestone.
 
-## Milestone 1 — end-to-end skeleton
+## Milestone 2 — Pluggable LLM providers
 
-A [`typer`](https://typer.tiangolo.com/) CLI that fetches a pull request's diff, asks
-Groq to summarize it, and posts the summary back as a PR comment. The GitHub Action in
-[`.github/workflows/pr-review.yml`](.github/workflows/pr-review.yml) is a thin wrapper
-that only invokes the CLI — no logic lives in the workflow.
+All four providers share a single interface (`LLMProvider.generate(prompt) -> str`).
+Switch between them with one environment variable — nothing downstream changes.
+
+| `LLM_PROVIDER` | Model | Key env var | Notes |
+|---|---|---|---|
+| `groq` *(default)* | `llama-3.3-70b-versatile` | `GROQ_API_KEY` | Free tier, ~1 000 req/day |
+| `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` | Free tier fallback |
+| `ollama` | `qwen2.5-coder:7b` | — | Local, offline, no rate limits |
+| `anthropic` | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | BYO key |
 
 ### Run it locally
 
 ```bash
 uv sync                                    # install dependencies
+export GITHUB_TOKEN=$(gh auth token)       # token with pull-requests:write
+
+# Default (Groq)
 export GROQ_API_KEY=<your-groq-key>        # free key: https://console.groq.com/keys
-export GITHUB_TOKEN=$(gh auth token)       # a token with pull-requests: write
+uv run pr-context-engine review --pr <N> --repo <owner>/<name>
+
+# Switch to Gemini
+export LLM_PROVIDER=gemini
+export GEMINI_API_KEY=<your-gemini-key>
+uv run pr-context-engine review --pr <N> --repo <owner>/<name>
+
+# Switch to local Ollama (requires ollama running with qwen2.5-coder:7b pulled)
+export LLM_PROVIDER=ollama
 uv run pr-context-engine review --pr <N> --repo <owner>/<name>
 ```
+
+### Run the tests
+
+```bash
+uv run pytest tests/unit/ -v
+```
+
+### Additional Ollama env vars
+
+| Var | Default | Description |
+|---|---|---|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `qwen2.5-coder:7b` | Model to use |
