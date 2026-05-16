@@ -1,5 +1,5 @@
 """Unit tests for GroqProvider — verifies the LLMProvider interface contract."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

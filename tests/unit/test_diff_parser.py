@@ -1,7 +1,6 @@
 """Unit tests for src/analyzers/diff_parser.py."""
-import pytest
 
-from src.analyzers.diff_parser import FileChange, Hunk, parse_diff
+from src.analyzers.diff_parser import parse_diff
 
 _SIMPLE_DIFF = """\
 diff --git a/src/foo.py b/src/foo.py

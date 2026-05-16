@@ -13,7 +13,6 @@ import pytest
 
 from src.context.codebase_index import (
     CodebaseIndex,
-    _Chunk,
     chunk_file,
     chunk_python,
     chunk_window,

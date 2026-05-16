@@ -12,12 +12,13 @@ from typing import TYPE_CHECKING
 import requests
 from github import Auth, Github
 
+from src.github_api import GITHUB_API_URL
+
 if TYPE_CHECKING:
     from src.fixes.fix_generator import FixSuggestion
 
 logger = logging.getLogger(__name__)
 
-_GITHUB_API = "https://api.github.com"
 _API_VERSION = "2022-11-28"
 
 
@@ -26,7 +27,7 @@ def fetch_pr_diff(repo: str, pr_number: int, github_token: str) -> str:
 
     `repo` is in `owner/name` form. Returns the raw unified-diff text.
     """
-    url = f"{_GITHUB_API}/repos/{repo}/pulls/{pr_number}"
+    url = f"{GITHUB_API_URL}/repos/{repo}/pulls/{pr_number}"
     headers = {
         "Accept": "application/vnd.github.diff",
         "Authorization": f"Bearer {github_token}",
@@ -34,6 +35,8 @@ def fetch_pr_diff(repo: str, pr_number: int, github_token: str) -> str:
     }
     logger.info("Fetching diff for %s PR #%d", repo, pr_number)
     response = requests.get(url, headers=headers, timeout=30)
+    if not response.ok:
+        logger.error("GitHub API error %d: %s", response.status_code, response.text[:300])
     response.raise_for_status()
     return response.text
 

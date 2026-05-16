@@ -17,12 +17,13 @@ from pathlib import Path
 
 import requests
 
+from src.github_api import GITHUB_API_URL
+
 logger = logging.getLogger(__name__)
 
 _GIT_LOG_LIMIT = 5
 _PR_MERGE_SCAN = 30  # merge commits to scan when searching for PR numbers
 _MAX_PRS = 3
-_GITHUB_API = "https://api.github.com"
 _REQUEST_TIMEOUT = 10
 
 
@@ -205,7 +206,7 @@ def _find_pr_numbers_from_merges(file_paths: list[str], root: Path) -> list[int]
 
 def _fetch_pr_details(repo: str, pr_number: int, headers: dict[str, str]) -> RecentPR | None:
     """Fetch PR title and body from GitHub API; returns None when unavailable."""
-    url = f"{_GITHUB_API}/repos/{repo}/pulls/{pr_number}"
+    url = f"{GITHUB_API_URL}/repos/{repo}/pulls/{pr_number}"
     try:
         resp = requests.get(url, headers=headers, timeout=_REQUEST_TIMEOUT)
         resp.raise_for_status()

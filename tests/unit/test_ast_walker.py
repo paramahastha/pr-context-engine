@@ -1,7 +1,6 @@
 """Unit tests for src/analyzers/ast_walker.py."""
-import pytest
 
-from src.analyzers.diff_parser import FileChange, Hunk
+from src.analyzers.diff_parser import FileChange
 from src.analyzers.ast_walker import extract_changed_symbols
 
 

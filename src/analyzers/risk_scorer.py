@@ -18,10 +18,11 @@ _AUTH_RE = re.compile(
 
 # Top-level function/method definition patterns for public-API deletion detection.
 # We only match lines with no leading whitespace (top-level scope).
-# TODO: extend to JS/TS (`export function`, arrow-function exports) for `deletes_public_api`
 _FUNC_DEF_RE = re.compile(
     r"^(?:async\s+)?def\s+([A-Za-z_][A-Za-z0-9_]*)"  # Python
     r"|^func\s+(?:\([^)]+\)\s+)?([A-Za-z_][A-Za-z0-9_]*)"  # Go
+    r"|^export\s+(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)"  # JS/TS named function
+    r"|^export\s+(?:const|let)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?\("  # JS/TS arrow
 )
 
 _MIGRATION_MARKERS = ("migrations/", "alembic/", "alembic_migrations/")

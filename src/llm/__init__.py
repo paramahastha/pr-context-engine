@@ -63,7 +63,6 @@ class FailoverProvider(LLMProvider):
                     logger.warning("Provider %s failed (%s); trying next", name, exc)
                 last_exc = exc
 
-        assert last_exc is not None  # guaranteed: providers is non-empty
         raise RuntimeError(
             f"All {len(self._providers)} provider(s) failed. Last error: {last_exc}"
         ) from last_exc

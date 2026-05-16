@@ -1,14 +1,10 @@
 """Unit tests for src/context/git_history."""
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 import requests
 
 from src.context.git_history import (
     CommitRecord,
-    FileHistory,
-    RecentPR,
     _fetch_file_history,
     _fetch_pr_details,
     _find_pr_numbers_from_merges,

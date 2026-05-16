@@ -1,8 +1,8 @@
 """System prompt and prompt-assembly utilities for generating senior-voice PR briefings.
 
-FIX_SYSTEM_PROMPT is a separate constant used exclusively by the fix generator (Milestone 8).
-It is never merged into SYSTEM_PROMPT so the M4 briefing behaviour remains byte-for-byte
-unchanged when ENABLE_FIXES=false.
+FIX_SYSTEM_PROMPT is used exclusively by the fix generator for per-flag LLM calls.
+It is never merged into SYSTEM_PROMPT so the briefing behaviour is unchanged when
+ENABLE_FIXES=false.
 """
 
 SYSTEM_PROMPT = """You are a senior backend engineer reviewing a pull request. You have 90 seconds.
@@ -38,12 +38,6 @@ Rules:
 - Never speculate about things you can't see. If you don't have the context,
   say "Cannot tell from diff."
 """
-
-# ---------------------------------------------------------------------------
-# Milestone 8 — Fix suggestion prompt (separate from SYSTEM_PROMPT)
-# Used ONLY by src/fixes/fix_generator.py for per-flag LLM calls.
-# Never included in the briefing prompt so M4 behaviour is untouched.
-# ---------------------------------------------------------------------------
 
 FIX_SYSTEM_PROMPT = """You are a senior backend engineer. A static-analysis heuristic has flagged \
 a specific line in a pull request. Your job is to suggest a minimal, correct fix — or decline \

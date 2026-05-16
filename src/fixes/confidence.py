@@ -10,25 +10,12 @@ readable code regardless of comment type.
 """
 import os
 
+from src.analyzers.diff_parser import _EXT_LANG
 from src.fixes.fix_generator import FixSuggestion
-
-_EXT_TO_LANG: dict[str, str] = {
-    ".py": "python",
-    ".ts": "typescript",
-    ".tsx": "typescript",
-    ".js": "javascript",
-    ".go": "go",
-    ".rb": "ruby",
-    ".java": "java",
-    ".rs": "rust",
-    ".sh": "bash",
-    ".yaml": "yaml",
-    ".yml": "yaml",
-}
 
 
 def _lang_from_path(path: str) -> str:
-    return _EXT_TO_LANG.get(os.path.splitext(path)[1].lower(), "")
+    return _EXT_LANG.get(os.path.splitext(path)[1].lower(), "")
 
 _CONFIDENCE_ICONS = {
     "high": "🔴",

@@ -1,13 +1,12 @@
 """Unit tests for src/analyzers/risk_scorer.py."""
-import pytest
 
 from src.analyzers.diff_parser import FileChange, Hunk
-from src.analyzers.risk_scorer import RiskFlag, score
+from src.analyzers.risk_scorer import score
 
 
 def _hunk(old_start: int, new_start: int, lines: list[str]) -> Hunk:
-    added = sum(1 for l in lines if l.startswith("+") and not l.startswith("+++"))
-    removed = sum(1 for l in lines if l.startswith("-") and not l.startswith("---"))
+    added = sum(1 for ln in lines if ln.startswith("+") and not ln.startswith("+++"))
+    removed = sum(1 for ln in lines if ln.startswith("-") and not ln.startswith("---"))
     return Hunk(
         old_start=old_start,
         old_count=removed,
@@ -18,8 +17,8 @@ def _hunk(old_start: int, new_start: int, lines: list[str]) -> Hunk:
 
 
 def _change(path: str, hunks: list[Hunk], language: str = "python") -> FileChange:
-    added = [l[1:] for h in hunks for l in h.lines if l.startswith("+") and not l.startswith("+++")]
-    removed = [l[1:] for h in hunks for l in h.lines if l.startswith("-") and not l.startswith("---")]
+    added = [ln[1:] for h in hunks for ln in h.lines if ln.startswith("+") and not ln.startswith("+++")]
+    removed = [ln[1:] for h in hunks for ln in h.lines if ln.startswith("-") and not ln.startswith("---")]
     return FileChange(
         path=path,
         language=language,
