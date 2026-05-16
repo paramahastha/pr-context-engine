@@ -37,24 +37,34 @@ def generate_briefing(
 
     Returns:
         A Briefing object with structured sections.
+
+    Raises:
+        RuntimeError: If the LLM provider fails to generate a response.
     """
     prompt = _assemble_prompt(changes, changed_symbols, flags)
     logger.info("Assembled prompt (%d chars)", len(prompt))
 
-    raw_response = provider.generate(prompt)
+    try:
+        raw_response = provider.generate(prompt)
+    except Exception as exc:
+        raise RuntimeError(f"LLM provider failed to generate briefing: {exc}") from exc
+
     logger.info("Generated briefing (%d chars)", len(raw_response))
 
     # Parse the LLM response into structured sections.
     # The LLM is prompted to follow a specific format, so we parse by section headers.
     sections = _parse_sections(raw_response)
 
-    return Briefing(
+    briefing = Briefing(
         what_changed=sections.get("what_changed", ""),
         blast_radius=sections.get("blast_radius", ""),
         risk_flags=sections.get("risk_flags", ""),
         questions=sections.get("questions", ""),
         raw_response=raw_response,
     )
+
+    _validate_briefing(briefing)
+    return briefing
 
 
 def _assemble_prompt(
@@ -103,7 +113,8 @@ def _parse_sections(response: str) -> dict[str, str]:
     3. RISK FLAGS
     4. QUESTIONS
 
-    This parser extracts content for each numbered section.
+    This parser extracts content for each numbered section. If a section is not
+    found, it returns an empty string for that section.
     """
     sections: dict[str, str] = {
         "what_changed": "",
@@ -124,6 +135,7 @@ def _parse_sections(response: str) -> dict[str, str]:
     lines = response.split("\n")
     current_section = None
     current_content: list[str] = []
+    found_sections = set()
 
     for line in lines:
         # Check if this line starts a new section (full header match only)
@@ -135,6 +147,7 @@ def _parse_sections(response: str) -> dict[str, str]:
                 if current_section:
                     sections[current_section] = "\n".join(current_content).strip()
                 current_section = section_key
+                found_sections.add(section_key)
                 current_content = []
                 section_found = True
                 break
@@ -147,4 +160,25 @@ def _parse_sections(response: str) -> dict[str, str]:
     if current_section:
         sections[current_section] = "\n".join(current_content).strip()
 
+    # Log which sections were found for debugging
+    missing = set(sections.keys()) - found_sections
+    if missing:
+        logger.warning("Missing expected sections in LLM response: %s", ", ".join(sorted(missing)))
+
     return sections
+
+
+def _validate_briefing(briefing: Briefing) -> None:
+    """Validate that briefing sections have meaningful content.
+
+    Logs warnings if any section is unexpectedly empty, which indicates the LLM
+    may not have followed the expected format or the parsing failed.
+    """
+    if not briefing.what_changed.strip():
+        logger.warning("Briefing section 'what_changed' is empty")
+    if not briefing.blast_radius.strip():
+        logger.warning("Briefing section 'blast_radius' is empty")
+    if not briefing.risk_flags.strip():
+        logger.warning("Briefing section 'risk_flags' is empty")
+    if not briefing.questions.strip():
+        logger.warning("Briefing section 'questions' is empty")

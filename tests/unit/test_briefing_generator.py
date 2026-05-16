@@ -120,3 +120,84 @@ def test_prompt_includes_risk_flags():
     assert "touches_migration" in prompt
     assert ":42" in prompt  # line number for auth flag
     assert "token_secret" in prompt
+
+
+def test_parse_sections_with_malformed_headers():
+    """Test parsing handles slightly malformed section headers gracefully."""
+    response = (
+        "1. WHAT CHANGED\nFixed a bug.\n\n"
+        "2. BLAST RADIUS\nNone.\n\n"
+        "3. RISK FLAGS\nNone.\n\n"
+        "4. QUESTIONS\n1. Test?\n2. Docs?\n3. Perf?"
+    )
+
+    sections = _parse_sections(response)
+
+    # All sections should parse correctly
+    assert "Fixed a bug" in sections["what_changed"]
+    assert "None" in sections["blast_radius"]
+
+
+def test_parse_sections_with_missing_final_section():
+    """Test parsing when final section is completely missing."""
+    response = (
+        "1. WHAT CHANGED\nAdded feature.\n\n"
+        "2. BLAST RADIUS\nImpacts services.\n\n"
+        "3. RISK FLAGS\nCritical"
+    )
+
+    sections = _parse_sections(response)
+
+    assert "Added feature" in sections["what_changed"]
+    assert "Impacts services" in sections["blast_radius"]
+    assert "Critical" in sections["risk_flags"]
+    # Missing section returns empty string
+    assert sections["questions"] == ""
+
+
+def test_parse_sections_with_section_header_in_content():
+    """Test parsing when content mistakenly contains next section's header text."""
+    response = (
+        "1. WHAT CHANGED\nThis change raises QUESTIONS about backwards compatibility.\n\n"
+        "2. BLAST RADIUS\nAll users.\n\n"
+        "3. RISK FLAGS\nNone.\n\n"
+        "4. QUESTIONS\n1. Backwards compat?\n2. Testing?\n3. Docs?"
+    )
+
+    sections = _parse_sections(response)
+
+    # Content before the actual section header should be captured correctly
+    assert "raises QUESTIONS about" in sections["what_changed"]
+    # Actual QUESTIONS section should also be captured
+    assert "Backwards compat" in sections["questions"]
+
+
+def test_parse_sections_completely_empty_response():
+    """Test parsing with an empty or unintelligible response."""
+    response = "I cannot analyze this PR."
+
+    sections = _parse_sections(response)
+
+    # All sections should be empty
+    assert sections["what_changed"] == ""
+    assert sections["blast_radius"] == ""
+    assert sections["risk_flags"] == ""
+    assert sections["questions"] == ""
+
+
+def test_parse_sections_with_section_header_variations():
+    """Test that parser only matches exact section headers."""
+    response = (
+        "1. WHAT CHANGED\nFixed bug.\n\n"
+        "2. BLAST RADIUS\nAll modules.\n\n"
+        "3. RISK FLAGS\nNone.\n\n"
+        "4. QUESTIONS\n1. Done?\n2. Tested?\n3. Ready?"
+    )
+
+    sections = _parse_sections(response)
+
+    # Should parse all sections correctly with the expected format
+    assert "Fixed bug" in sections["what_changed"]
+    assert "All modules" in sections["blast_radius"]
+    assert "None" in sections["risk_flags"]
+    assert "Done" in sections["questions"]
