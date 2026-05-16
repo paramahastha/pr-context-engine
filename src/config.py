@@ -1,4 +1,7 @@
-"""Provider factory — reads LLM_PROVIDER env var and returns the right LLMProvider."""
+"""Provider factory — reads LLM_PROVIDER env var and returns the right LLMProvider.
+
+Also exposes is_fixes_enabled() for the ENABLE_FIXES kill switch (Milestone 8).
+"""
 from __future__ import annotations
 
 import logging
@@ -104,3 +107,12 @@ def _build_single_provider(name: str) -> LLMProvider:
         return AnthropicProvider(api_key=api_key)
 
     raise AssertionError(f"unreachable: unhandled provider {name!r}")
+
+
+def is_fixes_enabled() -> bool:
+    """Return True when ENABLE_FIXES env var is set to a truthy value.
+
+    Fix suggestions are opt-in per repo. Default is False so the M4 briefing
+    behaviour is unchanged unless the caller explicitly enables the feature.
+    """
+    return os.getenv("ENABLE_FIXES", "false").strip().lower() in ("true", "1", "yes")
