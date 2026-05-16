@@ -64,6 +64,22 @@ Architectural decision records (ADRs) for PR Context Engine. Each entry captures
 
 ---
 
+## ADR-7: Provider failover order and motivation
+
+**Decision:** `FailoverProvider` (Milestone 7) tries providers in this order: Groq → Gemini → hard error. Gemini failover is enabled automatically whenever `GEMINI_API_KEY` is present in the environment, regardless of `LLM_PROVIDER`.
+
+**Context:** This is the runtime payoff for ADR-0. In December 2025 Google cut Gemini's free-tier rate limits by 50–80% overnight; by April 2026 Pro models moved behind a paywall. Groq's free tier allows ~1,000 requests/day, which is exhausted by a busy open-source repo during a release sprint. Without failover, a brief rate-limit window leaves every PR un-briefed and the tool's value collapses exactly when it's most needed.
+
+**Why Groq first, Gemini second:** Groq is faster and has the higher daily cap on a fresh key. Gemini is the designated fallback because it has a separate quota pool — rate-limiting on one does not imply rate-limiting on the other. Ollama/Anthropic are not in the automatic failover chain: Ollama requires a local server (not available in CI), and Anthropic is BYO-key only with no free tier.
+
+**How it surfaces to users:** The PR comment footer shows which provider was actually used — "via groq", "via gemini (groq rate-limited)", etc. — so maintainers can see failovers without digging through CI logs.
+
+**If all providers fail:** The bot posts a brief error comment to the PR instead of silently failing, so the reviewer knows a briefing was attempted but couldn't be generated.
+
+**Tradeoff accepted:** Auto-failover means a misconfigured primary silently routes to Gemini rather than failing loudly. The INFO log line ("Gemini failover enabled") and the footer attribution are the safety signals. If hard failure is preferred, set `LLM_PROVIDER=gemini` explicitly to disable the fallback.
+
+---
+
 ## ADR-6: MIT license
 
 **Decision:** MIT, not Apache 2.0, GPL, or AGPL.
