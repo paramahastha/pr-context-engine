@@ -1,0 +1,10 @@
+{
+  "id": "15-dependency-update",
+  "title": "Upgrade requests to 2.32.2 (CVE-2024-35195 fix)",
+  "description": "Bumps the requests library from 2.28.2 to 2.32.2 to patch CVE-2024-35195, which allows session objects to send credentials to unintended hosts.",
+  "diff": "diff --git a/pyproject.toml b/pyproject.toml\nindex jjjjjjj..kkkkkkk 100644\n--- a/pyproject.toml\n+++ b/pyproject.toml\n@@ -8,7 +8,7 @@ dependencies = [\n     \"flask>=3.0\",\n     \"sqlalchemy>=2.0\",\n-    \"requests>=2.28,<3\",\n+    \"requests>=2.32.2,<3\",\n     \"stripe>=8.0\",\n     \"pyjwt>=2.8\",\n ]\ndiff --git a/uv.lock b/uv.lock\nindex lllllll..mmmmmmm 100644\n--- a/uv.lock\n+++ b/uv.lock\n@@ -102,7 +102,7 @@ name = \"requests\"\n-version = \"2.28.2\"\n+version = \"2.32.2\"\n source = { registry = \"https://pypi.org/simple\" }\n dependencies = [\n     { name = \"certifi\" },\n",
+  "expected_risk_flags": [],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Security patch dependency bump. No risk flags fire. The real blast radius is behavioral: requests 2.32.x changes proxy handling and session credential forwarding. Any code that uses session.mount() or custom adapters may behave differently. Briefing should note the CVE and ask about regression testing. Key questions: are there integration tests covering HTTP session behavior? Does any code depend on the credential-forwarding behavior that the CVE describes? Does the test suite run against actual HTTP endpoints or just mocked responses?"
+}

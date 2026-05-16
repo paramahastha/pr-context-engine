@@ -1,0 +1,15 @@
+{
+  "id": "13-auth-bypass",
+  "title": "Add emergency access override for on-call engineers",
+  "description": "Allows on-call engineers to access admin endpoints using a shared bypass token during incidents when SSO is unavailable.",
+  "diff": "diff --git a/src/middleware/admin_auth.py b/src/middleware/admin_auth.py\nindex fffffff..ggggggg 100644\n--- a/src/middleware/admin_auth.py\n+++ b/src/middleware/admin_auth.py\n@@ -5,12 +5,22 @@ from flask import request, jsonify, g\n from src.middleware.auth import require_auth\n \n EMERGENCY_BYPASS_TOKEN = \"oncall-bypass-2024-supersecret\"\n+\n \n def require_admin_token(f):\n     \"\"\"Enforce that the authenticated user has admin scope in their token.\"\"\"\n     @wraps(f)\n-    @require_auth\n     def decorated(*args, **kwargs):\n+        bypass = request.headers.get('X-Emergency-Bypass')\n+        if bypass == EMERGENCY_BYPASS_TOKEN:\n+            g.user_id = 'emergency-oncall'\n+            g.scopes = ['admin', 'read', 'write']\n+            return f(*args, **kwargs)\n         scopes = getattr(g, 'scopes', [])\n         if 'admin' not in scopes:\n             return jsonify({'error': 'admin token scope required'}), 403\n+        @require_auth\n         return f(*args, **kwargs)\n     return decorated\n",
+  "expected_risk_flags": ["modifies_auth"],
+  "known_bug": {
+    "present": true,
+    "description": "A hardcoded bypass token ('oncall-bypass-2024-supersecret') is committed to source. Any developer with repo access can use it to gain full admin access. It cannot be rotated without a code deploy. Additionally, @require_auth is now applied after the bypass check, so the bypass path skips authentication entirely.",
+    "eligible_for_fix": true,
+    "correct_fix_description": "Replace the hardcoded EMERGENCY_BYPASS_TOKEN with os.environ.get('EMERGENCY_BYPASS_TOKEN') and validate it is non-empty at startup. Move @require_auth back to wrap the decorated function before the bypass check so all paths go through authentication."
+  },
+  "expected_trivial": false,
+  "human_notes": "Two security issues: hardcoded secret in source, and the @require_auth decorator is now misplaced (it's inside the return branch instead of wrapping the decorator). The modifies_auth flag fires on the EMERGENCY_BYPASS_TOKEN line and the bypass header check line. The correct fix addresses both: env var for the token, and restoring proper auth flow."
+}

@@ -1,0 +1,10 @@
+{
+  "id": "02-auth-middleware",
+  "title": "Add JWT token verification to API middleware",
+  "description": "Introduces JWT validation in the authentication middleware to replace the previous passthrough behavior during a migration period.",
+  "diff": "diff --git a/src/middleware/auth.py b/src/middleware/auth.py\nindex abc1234..def5678 100644\n--- a/src/middleware/auth.py\n+++ b/src/middleware/auth.py\n@@ -1,6 +1,8 @@\n \"\"\"Authentication middleware for the API layer.\"\"\"\n+import jwt\n from functools import wraps\n from flask import request, jsonify, g\n+from src.config import settings\n \n \n def require_auth(f):\n@@ -8,10 +10,20 @@ def require_auth(f):\n     @wraps(f)\n     def decorated(*args, **kwargs):\n-        # TODO: implement token verification\n-        return f(*args, **kwargs)\n+        auth_header = request.headers.get('Authorization', '')\n+        if not auth_header.startswith('Bearer '):\n+            return jsonify({'error': 'Missing or invalid Authorization header'}), 401\n+        token = auth_header.split(' ', 1)[1]\n+        try:\n+            payload = jwt.decode(\n+                token,\n+                settings.JWT_SECRET,\n+                algorithms=['HS256'],\n+            )\n+            g.user_id = payload['sub']\n+            g.scopes = payload.get('scopes', [])\n+        except jwt.InvalidTokenError as exc:\n+            return jsonify({'error': 'Invalid token', 'detail': str(exc)}), 401\n+        return f(*args, **kwargs)\n     return decorated\n",
+  "expected_risk_flags": ["modifies_auth"],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Properly implements JWT verification. This is a correct change — the modifies_auth flag fires because 'token' appears in added lines. Briefing should note that all routes using require_auth are now actually enforced. Key questions: what happens to existing tokens that were issued before this was enforced? Is HS256 appropriate or should RS256 be used? How are expired tokens handled?"
+}
