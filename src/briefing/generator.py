@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from src.analyzers.diff_parser import FileChange
 from src.analyzers.risk_scorer import RiskFlag
 from src.briefing.prompt_templates import SYSTEM_PROMPT
+from src.context.codebase_index import RelatedChunk
 from src.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ def generate_briefing(
     changes: list[FileChange],
     changed_symbols: dict[str, list[str]],
     flags: list[RiskFlag],
+    related_code: dict[str, list[RelatedChunk]] | None = None,
 ) -> Briefing:
     """Generate a structured briefing from diff analysis.
 
@@ -34,6 +36,7 @@ def generate_briefing(
         changes: List of parsed file changes from the diff.
         changed_symbols: Mapping of file paths to changed function/class names.
         flags: Risk flags detected by heuristic analysis.
+        related_code: Optional mapping of file paths to semantically similar chunks from the repo.
 
     Returns:
         A Briefing object with structured sections.
@@ -41,7 +44,7 @@ def generate_briefing(
     Raises:
         RuntimeError: If the LLM provider fails to generate a response.
     """
-    prompt = _assemble_prompt(changes, changed_symbols, flags)
+    prompt = _assemble_prompt(changes, changed_symbols, flags, related_code)
     logger.info("Assembled prompt (%d chars)", len(prompt))
 
     try:
@@ -71,6 +74,7 @@ def _assemble_prompt(
     changes: list[FileChange],
     changed_symbols: dict[str, list[str]],
     flags: list[RiskFlag],
+    related_code: dict[str, list[RelatedChunk]] | None = None,
 ) -> str:
     """Assemble the full prompt: system prompt + structured context."""
     parts: list[str] = [SYSTEM_PROMPT]
@@ -100,6 +104,19 @@ def _assemble_prompt(
             parts.append(f"- [{flag.flag}] `{flag.file}{loc}` — {flag.snippet}\n")
     else:
         parts.append("None detected.\n")
+
+    if related_code:
+        parts.append("\n### Related code (semantically similar, from elsewhere in repo)\n")
+        for file_path, chunks in related_code.items():
+            if not chunks:
+                continue
+            parts.append(f"\n**Related to `{file_path}`:**\n")
+            for chunk in chunks[:3]:
+                # Truncate long chunks to keep prompt under token budget
+                snippet = chunk.chunk_text[:400]
+                if len(chunk.chunk_text) > 400:
+                    snippet += "\n..."
+                parts.append(f"- `{chunk.file_path}` ({chunk.label}):\n```\n{snippet}\n```\n")
 
     return "".join(parts)
 

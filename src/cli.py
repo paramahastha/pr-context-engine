@@ -9,6 +9,7 @@ from src.analyzers.diff_parser import FileChange, parse_diff
 from src.analyzers.risk_scorer import score
 from src.briefing.generator import Briefing, generate_briefing
 from src.config import get_provider
+from src.context.codebase_index import CodebaseIndex, RelatedChunk
 from src.github_api.comment_poster import fetch_pr_diff, post_pr_comment
 
 load_dotenv()
@@ -71,17 +72,56 @@ def review(
     flags = score(changes)
     logger.info("Detected %d risk flags", len(flags))
 
+    related_code = _build_related_code(changes, changed_symbols)
+
     try:
         provider = get_provider()
     except RuntimeError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    briefing = generate_briefing(provider, changes, changed_symbols, flags)
+    briefing = generate_briefing(provider, changes, changed_symbols, flags, related_code)
     logger.info("Generated briefing sections")
 
     comment_text = _format_briefing(briefing)
     post_pr_comment(repo, pr, comment_text, github_token)
     logger.info("Comment posted to %s PR #%d", repo, pr)
+
+
+def _build_related_code(
+    changes: list[FileChange],
+    changed_symbols: dict[str, list[str]],
+) -> dict[str, list[RelatedChunk]]:
+    """Build and query the codebase index for each changed file.
+
+    Returns an empty dict if indexing fails (e.g. sqlite-vec extension unavailable
+    on this platform) so the briefing still works without RAG context.
+    """
+    try:
+        index = CodebaseIndex(repo_root=".")
+        index.build_or_update()
+    except Exception as exc:
+        logger.warning("Codebase index unavailable — skipping related-code context: %s", exc)
+        return {}
+
+    exclude = {c.path for c in changes}
+    related: dict[str, list[RelatedChunk]] = {}
+    for change in changes:
+        query_text = _file_change_query(change, changed_symbols.get(change.path, []))
+        chunks = index.query(query_text, exclude_paths=exclude, top_k=5)
+        if chunks:
+            related[change.path] = chunks
+
+    return related
+
+
+def _file_change_query(change: FileChange, symbols: list[str]) -> str:
+    """Build a query string representing a file change for embedding lookup."""
+    parts = [change.path]
+    if symbols:
+        parts.append("functions: " + ", ".join(symbols[:10]))
+    if change.added_lines:
+        parts.append("\n".join(change.added_lines[:20]))
+    return "\n".join(parts)
 
 
 def _format_briefing(briefing: Briefing) -> str:
