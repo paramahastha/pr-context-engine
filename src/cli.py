@@ -10,6 +10,7 @@ from src.analyzers.risk_scorer import score
 from src.briefing.generator import Briefing, generate_briefing
 from src.config import get_provider
 from src.context.codebase_index import CodebaseIndex, RelatedChunk
+from src.context.git_history import FileHistory, RecentPR, get_file_histories, get_recent_merged_prs
 from src.github_api.comment_poster import fetch_pr_diff, post_pr_comment
 
 load_dotenv()
@@ -73,13 +74,16 @@ def review(
     logger.info("Detected %d risk flags", len(flags))
 
     related_code = _build_related_code(changes, changed_symbols)
+    git_history, recent_prs = _build_git_context(changes, repo, github_token)
 
     try:
         provider = get_provider()
     except RuntimeError as exc:
         raise typer.BadParameter(str(exc)) from exc
 
-    briefing = generate_briefing(provider, changes, changed_symbols, flags, related_code)
+    briefing = generate_briefing(
+        provider, changes, changed_symbols, flags, related_code, git_history, recent_prs
+    )
     logger.info("Generated briefing sections")
 
     comment_text = _format_briefing(briefing)
@@ -122,6 +126,36 @@ def _file_change_query(change: FileChange, symbols: list[str]) -> str:
     if change.added_lines:
         parts.append("\n".join(change.added_lines[:20]))
     return "\n".join(parts)
+
+
+def _build_git_context(
+    changes: list[FileChange],
+    repo: str,
+    github_token: str | None,
+) -> tuple[dict[str, FileHistory], list[RecentPR]]:
+    """Fetch git history and recent merged PRs for changed files.
+
+    Returns an empty dict/list on any failure so the briefing still works
+    without history context.
+    """
+    file_paths = [c.path for c in changes]
+
+    try:
+        git_history = get_file_histories(file_paths, repo_root=".")
+        logger.info("Fetched git history for %d files", len(git_history))
+    except Exception as exc:
+        logger.warning("Git history unavailable: %s", exc)
+        git_history = {}
+
+    recent_prs: list[RecentPR] = []
+    if github_token:
+        try:
+            recent_prs = get_recent_merged_prs(file_paths, repo, github_token, repo_root=".")
+            logger.info("Found %d recent merged PRs", len(recent_prs))
+        except Exception as exc:
+            logger.warning("Recent PR lookup failed: %s", exc)
+
+    return git_history, recent_prs
 
 
 def _format_briefing(briefing: Briefing) -> str:

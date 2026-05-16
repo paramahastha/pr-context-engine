@@ -6,6 +6,7 @@ from src.analyzers.diff_parser import FileChange
 from src.analyzers.risk_scorer import RiskFlag
 from src.briefing.prompt_templates import SYSTEM_PROMPT
 from src.context.codebase_index import RelatedChunk
+from src.context.git_history import FileHistory, RecentPR
 from src.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ def generate_briefing(
     changed_symbols: dict[str, list[str]],
     flags: list[RiskFlag],
     related_code: dict[str, list[RelatedChunk]] | None = None,
+    git_history: dict[str, FileHistory] | None = None,
+    recent_prs: list[RecentPR] | None = None,
 ) -> Briefing:
     """Generate a structured briefing from diff analysis.
 
@@ -37,6 +40,8 @@ def generate_briefing(
         changed_symbols: Mapping of file paths to changed function/class names.
         flags: Risk flags detected by heuristic analysis.
         related_code: Optional mapping of file paths to semantically similar chunks from the repo.
+        git_history: Optional mapping of file paths to their recent commit history.
+        recent_prs: Optional list of recently merged PRs touching the same files.
 
     Returns:
         A Briefing object with structured sections.
@@ -44,7 +49,7 @@ def generate_briefing(
     Raises:
         RuntimeError: If the LLM provider fails to generate a response.
     """
-    prompt = _assemble_prompt(changes, changed_symbols, flags, related_code)
+    prompt = _assemble_prompt(changes, changed_symbols, flags, related_code, git_history, recent_prs)
     logger.info("Assembled prompt (%d chars)", len(prompt))
 
     try:
@@ -75,6 +80,8 @@ def _assemble_prompt(
     changed_symbols: dict[str, list[str]],
     flags: list[RiskFlag],
     related_code: dict[str, list[RelatedChunk]] | None = None,
+    git_history: dict[str, FileHistory] | None = None,
+    recent_prs: list[RecentPR] | None = None,
 ) -> str:
     """Assemble the full prompt: system prompt + structured context."""
     parts: list[str] = [SYSTEM_PROMPT]
@@ -104,6 +111,27 @@ def _assemble_prompt(
             parts.append(f"- [{flag.flag}] `{flag.file}{loc}` — {flag.snippet}\n")
     else:
         parts.append("None detected.\n")
+
+    if git_history:
+        parts.append("\n### Recent activity on touched files\n")
+        for file_path, history in git_history.items():
+            if not history.recent_commits and not history.limited_history:
+                continue
+            parts.append(f"\n**`{file_path}`**")
+            if history.limited_history and not history.recent_commits:
+                parts.append(" — limited history (shallow clone)\n")
+            else:
+                if history.limited_history:
+                    parts.append(" (history may be truncated — shallow clone)")
+                parts.append("\n")
+                for commit in history.recent_commits:
+                    parts.append(f"- `{commit.sha}` {commit.message}\n")
+
+    if recent_prs:
+        parts.append("\n### Recent merged PRs touching these files\n")
+        for pr in recent_prs:
+            desc = f" — {pr.body_first_line}" if pr.body_first_line else ""
+            parts.append(f"- PR #{pr.number}: \"{pr.title}\"{desc}\n")
 
     if related_code:
         parts.append("\n### Related code (semantically similar, from elsewhere in repo)\n")

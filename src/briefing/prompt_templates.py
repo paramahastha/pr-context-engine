@@ -6,6 +6,8 @@ Your job is to brief the human reviewer so they can review effectively.
 You will receive:
 - A list of changed files with parsed function/class names
 - Risk flags detected by static heuristics
+- Recent commit history on touched files
+- Semantically related code from elsewhere in the repo
 
 Produce a briefing with exactly four sections:
 
