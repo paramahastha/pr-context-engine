@@ -22,19 +22,24 @@ logger = logging.getLogger(__name__)
 _API_VERSION = "2022-11-28"
 
 
-def fetch_pr_diff(repo: str, pr_number: int, github_token: str) -> str:
+def fetch_pr_diff(repo: str, pr_number: int, github_token: str | None) -> str:
     """Fetch the unified diff of a pull request.
 
     `repo` is in `owner/name` form. Returns the raw unified-diff text.
+    Omits the Authorization header when `github_token` is None (anonymous, public repos only).
     """
     url = f"{GITHUB_API_URL}/repos/{repo}/pulls/{pr_number}"
-    headers = {
+    headers: dict[str, str] = {
         "Accept": "application/vnd.github.diff",
-        "Authorization": f"Bearer {github_token}",
         "X-GitHub-Api-Version": _API_VERSION,
     }
+    if github_token:
+        headers["Authorization"] = f"Bearer {github_token}"
     logger.info("Fetching diff for %s PR #%d", repo, pr_number)
-    response = requests.get(url, headers=headers, timeout=30)
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Network error fetching PR diff: {exc}") from exc
     if not response.ok:
         logger.error("GitHub API error %d: %s", response.status_code, response.text[:300])
     response.raise_for_status()

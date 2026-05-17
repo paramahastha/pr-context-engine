@@ -8,14 +8,12 @@ Note: GitHub's ```suggestion fence only works in line-level review comments, not
 general PR body comments. We use language-inferred fences so the patch renders as
 readable code regardless of comment type.
 """
-import os
-
-from src.analyzers.diff_parser import _EXT_LANG
+from src.analyzers.diff_parser import detect_language
 from src.fixes.fix_generator import FixSuggestion
 
 
 def _lang_from_path(path: str) -> str:
-    return _EXT_LANG.get(os.path.splitext(path)[1].lower(), "")
+    return detect_language(path)
 
 _CONFIDENCE_ICONS = {
     "high": "🔴",

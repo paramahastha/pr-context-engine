@@ -19,3 +19,6 @@ dist/
 
 # Generated codebase index (Milestone 5)
 index.db
+
+# Eval run output — generated on each run, not committed
+tests/eval/scores.jsonl

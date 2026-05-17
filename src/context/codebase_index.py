@@ -236,6 +236,7 @@ class CodebaseIndex:
                 db.execute("DELETE FROM vec_chunks WHERE rowid = ?", (chunk_id,))
             db.execute("DELETE FROM chunks WHERE file_path = ?", (path,))
             db.execute("DELETE FROM file_hashes WHERE file_path = ?", (path,))
+        db.commit()
 
     def _list_repo_files(self) -> dict[str, str]:
         """Return {relative_path: git_blob_hash} for all indexable tracked files."""

@@ -1,4 +1,5 @@
 """Parse a unified diff string into structured FileChange objects."""
+import os
 import re
 from dataclasses import dataclass, field
 
@@ -26,6 +27,11 @@ _EXT_LANG: dict[str, str] = {
     ".html": "html",
     ".css": "css",
 }
+
+def detect_language(path: str) -> str:
+    """Return the markdown fence language identifier for a file path, or empty string."""
+    return _EXT_LANG.get(os.path.splitext(path)[1].lower(), "")
+
 
 _HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
