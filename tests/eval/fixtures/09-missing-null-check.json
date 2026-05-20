@@ -1,0 +1,15 @@
+{
+  "id": "09-missing-null-check",
+  "title": "Add user profile summary endpoint",
+  "description": "Returns a lightweight user profile JSON object for the dashboard header — name, avatar URL, and unread notification count.",
+  "diff": "diff --git a/src/api/profile.py b/src/api/profile.py\nindex 9999999..aaaaaaa 100644\n--- a/src/api/profile.py\n+++ b/src/api/profile.py\n@@ -1,6 +1,8 @@\n \"\"\"User profile API endpoints.\"\"\"\n from flask import jsonify, g\n+from src.services.notification_service import NotificationService\n from src.middleware.auth import require_auth\n+from src.models import User\n \n \n @app.route('/api/v2/profile/summary')\n@@ -8,4 +10,16 @@ from src.middleware.auth import require_auth\n @require_auth\n def get_profile_summary():\n     \"\"\"Return lightweight profile data for dashboard header.\"\"\"\n-    pass\n+    user_id = g.user_id\n+    user = User.query.get(user_id)\n+    notification_svc = NotificationService()\n+    unread_count = notification_svc.get_unread_count(user_id)\n+    return jsonify({\n+        \"name\": user.display_name,\n+        \"avatar_url\": user.avatar_url,\n+        \"email\": user.email,\n+        \"unread_count\": unread_count,\n+    })\n",
+  "expected_risk_flags": [],
+  "known_bug": {
+    "present": true,
+    "description": "User.query.get(user_id) returns None if the user_id from the JWT no longer exists in the database (deleted users, test tokens). Accessing user.display_name on None raises AttributeError, returning a 500 instead of a 404.",
+    "eligible_for_fix": false,
+    "correct_fix_description": "Add a null check after the query: if user is None: return jsonify({'error': 'User not found'}), 404. Then proceed with the response."
+  },
+  "expected_trivial": false,
+  "human_notes": "No heuristic flag fires. The bug is semantic — missing null guard after ORM lookup. The LLM briefing should catch this in the questions section ('What happens if User.query.get returns None?'). Fix is not eligible because there's no located RiskFlag with a line number to anchor a suggestion."
+}

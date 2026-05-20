@@ -1,0 +1,10 @@
+{
+  "id": "03-db-migration",
+  "title": "Add user_preferences JSONB column to users table",
+  "description": "Adds a nullable user_preferences column to store per-user feature flags and UI settings without requiring a separate table.",
+  "diff": "diff --git a/alembic/versions/0042_add_user_preferences.py b/alembic/versions/0042_add_user_preferences.py\nnew file mode 100644\nindex 0000000..aaabbbc\n--- /dev/null\n+++ b/alembic/versions/0042_add_user_preferences.py\n@@ -0,0 +1,28 @@\n+\"\"\"Add user_preferences column.\n+\n+Revision ID: 0042\n+Revises: 0041\n+Create Date: 2026-05-01\n+\"\"\"\n+from alembic import op\n+import sqlalchemy as sa\n+from sqlalchemy.dialects.postgresql import JSONB\n+\n+revision = '0042'\n+down_revision = '0041'\n+\n+\n+def upgrade() -> None:\n+    op.add_column(\n+        'users',\n+        sa.Column(\n+            'user_preferences',\n+            JSONB,\n+            nullable=True,\n+            server_default=None,\n+        ),\n+    )\n+\n+\n+def downgrade() -> None:\n+    op.drop_column('users', 'user_preferences')\ndiff --git a/src/models/user.py b/src/models/user.py\nindex 3333333..4444444 100644\n--- a/src/models/user.py\n+++ b/src/models/user.py\n@@ -12,6 +12,7 @@ class User(Base):\n     id: Mapped[int] = mapped_column(primary_key=True)\n     email: Mapped[str] = mapped_column(String(255), unique=True)\n     created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)\n+    user_preferences: Mapped[dict | None] = mapped_column(JSONB, nullable=True)\n",
+  "expected_risk_flags": ["touches_migration"],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Adds a nullable JSONB column via Alembic. Migration is reversible. Briefing should note this is the 42nd migration on the users table and ask about concurrent access during migration. Key questions: has this been tested on a large users table without a lock? Are there existing rows that need default values populated? Does any application code read user_preferences and need a null guard?"
+}

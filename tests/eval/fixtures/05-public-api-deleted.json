@@ -1,0 +1,10 @@
+{
+  "id": "05-public-api-deleted",
+  "title": "Remove deprecated get_user_by_email function",
+  "description": "Removes the deprecated get_user_by_email helper that has been superseded by UserRepository.find_by_email since v2.1.",
+  "diff": "diff --git a/src/users/helpers.py b/src/users/helpers.py\nindex 5555555..6666666 100644\n--- a/src/users/helpers.py\n+++ b/src/users/helpers.py\n@@ -1,26 +1,6 @@\n \"\"\"Legacy user helper functions — being phased out in favour of UserRepository.\"\"\"\n from src.db import get_session\n-from src.models import User\n \n-\n-def get_user_by_email(email: str) -> User | None:\n-    \"\"\"Look up a user by email address.\n-\n-    Deprecated: use UserRepository(session).find_by_email(email) instead.\n-    This function will be removed in v3.0.\n-    \"\"\"\n-    with get_session() as session:\n-        return session.query(User).filter(User.email == email).first()\n-\n-\n-def get_active_users(limit: int = 100) -> list[User]:\n-    \"\"\"Return up to `limit` active users, ordered by created_at desc.\n-\n-    Deprecated: use UserRepository(session).list_active(limit=limit) instead.\n-    This function will be removed in v3.0.\n-    \"\"\"\n-    with get_session() as session:\n-        return session.query(User).filter(User.is_active.is_(True)).order_by(\n-            User.created_at.desc()\n-        ).limit(limit).all()\n \n # Module retained for import compatibility; will be deleted in v3.0.\n",
+  "expected_risk_flags": ["deletes_public_api"],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Removes two public functions that were deprecated for multiple releases. The real risk is callers outside this repo (internal tools, scripts, other services) that never migrated. Briefing should note both functions are removed. Key questions: were all internal callers confirmed as migrated? Are there external consumers (scripts, other repos) that import from this module? Does the empty module retained for compatibility actually export the replacement path?"
+}

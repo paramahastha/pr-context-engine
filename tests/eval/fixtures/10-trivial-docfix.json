@@ -1,0 +1,10 @@
+{
+  "id": "10-trivial-docfix",
+  "title": "Fix typo in UserService docstring",
+  "description": "Corrects 'retuns' to 'returns' in the get_user docstring.",
+  "diff": "diff --git a/src/services/user_service.py b/src/services/user_service.py\nindex bbbbbbb..ccccccc 100644\n--- a/src/services/user_service.py\n+++ b/src/services/user_service.py\n@@ -22,7 +22,7 @@ class UserService:\n \n     def get_user(self, user_id: int) -> User | None:\n-        \"\"\"Fetch a user by ID. Retuns None if not found.\"\"\"\n+        \"\"\"Fetch a user by ID. Returns None if not found.\"\"\"\n         return self._repo.find_by_id(user_id)\n",
+  "expected_risk_flags": [],
+  "known_bug": null,
+  "expected_trivial": true,
+  "human_notes": "Pure documentation fix. The briefing should identify this as trivial and skip the full four-section format. A good briefing says something like 'Trivial: fixes typo in docstring (retuns -> returns). No logic changes.' and does not pad it with blast radius or risk questions."
+}
