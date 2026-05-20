@@ -80,6 +80,19 @@ Architectural decision records (ADRs) for PR Context Engine. Each entry captures
 
 ---
 
+## ADR-8: Python 3.12 as the implementation language
+
+**Decision:** Python 3.12, not Go, TypeScript, or Rust.
+
+**Why Python:** Three reasons that compound:
+- **AST ecosystem** — `ast` (stdlib) gives first-class Python AST walking with zero dependencies. `tree-sitter` Python bindings are the de facto standard for multi-language symbol extraction. No equivalent exists at this maturity in Go or Rust.
+- **LLM SDK ecosystem** — every major provider (Groq, Gemini, Anthropic, Ollama) publishes an official Python SDK first. Using them means staying on the maintained path rather than maintaining thin HTTP wrappers.
+- **Speed of iteration for a portfolio project** — the bottleneck here is LLM call latency (hundreds of ms), not CPU. Python's overhead is irrelevant; its expressiveness and library depth are not.
+
+**What was given up:** A Go or Rust binary would start faster and produce a single distributable file. Neither matters for a tool whose hot path is an LLM network call. `pipx` handles distribution cleanly; `uv` handles dependency resolution at Go-like speed.
+
+---
+
 ## ADR-6: MIT license
 
 **Decision:** MIT, not Apache 2.0, GPL, or AGPL.
