@@ -114,7 +114,8 @@ def _assemble_prompt(
 
     if git_history:
         parts.append("\n### Recent activity on touched files\n")
-        for file_path, history in git_history.items():
+        _MAX_HISTORY_FILES = 10
+        for file_path, history in list(git_history.items())[:_MAX_HISTORY_FILES]:
             if not history.recent_commits and not history.limited_history:
                 continue
             parts.append(f"\n**`{file_path}`**")

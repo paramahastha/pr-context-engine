@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 app = typer.Typer(help="PR Context Engine — brief a pull request.")
 
 _MAX_DIFF_LINES = 4_000  # ~8k tokens; avoids hitting provider context limits on large PRs
+_MAX_RAG_FILES = 10  # query RAG only for the most-changed files to keep prompt under token budget
 
 
 @app.callback()
@@ -156,8 +157,9 @@ def _build_related_code(
         return {}
 
     exclude = {c.path for c in changes}
+    top_files = sorted(changes, key=lambda c: len(c.added_lines) + len(c.removed_lines), reverse=True)[:_MAX_RAG_FILES]
     related: dict[str, list[RelatedChunk]] = {}
-    for change in changes:
+    for change in top_files:
         query_text = _file_change_query(change, changed_symbols.get(change.path, []))
         chunks = index.query(query_text, exclude_paths=exclude, top_k=5)
         if chunks:
