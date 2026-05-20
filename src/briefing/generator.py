@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 _MAX_PROMPT_CHARS = 24_000  # ~6k tokens; safely under Groq free-tier 12k TPM limit
 _MAX_CHANGED_FILES_IN_PROMPT = 20  # cap file list for large PRs; show most-changed first
-_MAX_HISTORY_FILES = 5
-_MAX_RAG_CHUNKS = 2
-_MAX_CHUNK_CHARS = 200
+_MAX_HISTORY_FILES = 10
+_MAX_RAG_CHUNKS = 3
+_MAX_CHUNK_CHARS = 400
 
 
 @dataclass
