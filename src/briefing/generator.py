@@ -11,6 +11,12 @@ from src.llm.base import LLMProvider
 
 logger = logging.getLogger(__name__)
 
+_MAX_PROMPT_CHARS = 24_000  # ~6k tokens; safely under Groq free-tier 12k TPM limit
+_MAX_CHANGED_FILES_IN_PROMPT = 20  # cap file list for large PRs; show most-changed first
+_MAX_HISTORY_FILES = 5
+_MAX_RAG_CHUNKS = 2
+_MAX_CHUNK_CHARS = 200
+
 
 @dataclass
 class Briefing:
@@ -89,7 +95,9 @@ def _assemble_prompt(
     parts.append("\n---\n## CONTEXT\n")
 
     parts.append("### Changed files\n")
-    for change in changes:
+    sorted_changes = sorted(changes, key=lambda c: len(c.added_lines) + len(c.removed_lines), reverse=True)
+    shown = sorted_changes[:_MAX_CHANGED_FILES_IN_PROMPT]
+    for change in shown:
         if change.is_new_file:
             action = "new file"
         elif change.is_deleted_file:
@@ -103,6 +111,8 @@ def _assemble_prompt(
             f"- `{change.path}` ({change.language}, {action})"
             f" +{len(change.added_lines)}/-{len(change.removed_lines)} lines{symbol_str}\n"
         )
+    if len(changes) > _MAX_CHANGED_FILES_IN_PROMPT:
+        parts.append(f"- ... and {len(changes) - _MAX_CHANGED_FILES_IN_PROMPT} more file(s) omitted\n")
 
     parts.append("\n### Risk flags\n")
     if flags:
@@ -114,7 +124,6 @@ def _assemble_prompt(
 
     if git_history:
         parts.append("\n### Recent activity on touched files\n")
-        _MAX_HISTORY_FILES = 10
         for file_path, history in list(git_history.items())[:_MAX_HISTORY_FILES]:
             if not history.recent_commits and not history.limited_history:
                 continue
@@ -140,14 +149,17 @@ def _assemble_prompt(
             if not chunks:
                 continue
             parts.append(f"\n**Related to `{file_path}`:**\n")
-            for chunk in chunks[:3]:
-                # Truncate long chunks to keep prompt under token budget
-                snippet = chunk.chunk_text[:400]
-                if len(chunk.chunk_text) > 400:
+            for chunk in chunks[:_MAX_RAG_CHUNKS]:
+                snippet = chunk.chunk_text[:_MAX_CHUNK_CHARS]
+                if len(chunk.chunk_text) > _MAX_CHUNK_CHARS:
                     snippet += "\n..."
                 parts.append(f"- `{chunk.file_path}` ({chunk.label}):\n```\n{snippet}\n```\n")
 
-    return "".join(parts)
+    prompt = "".join(parts)
+    if len(prompt) > _MAX_PROMPT_CHARS:
+        logger.warning("Prompt exceeded %d chars (%d) — truncating", _MAX_PROMPT_CHARS, len(prompt))
+        prompt = prompt[:_MAX_PROMPT_CHARS] + "\n\n[Context truncated to fit model token budget]\n"
+    return prompt
 
 
 def _parse_sections(response: str) -> dict[str, str]:
