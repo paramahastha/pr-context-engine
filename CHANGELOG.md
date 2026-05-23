@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## Unreleased
 
+## 0.1.3 — 2026-05-23
+
+### Fixed
+
+- **GitHub Action 401 error** — `action.yml` now falls back to `github.token` when the `github-token` input is not explicitly passed, preventing Bad credentials errors in consumer workflows.
+- **Error messages** — `post_pr_comment` now catches `GithubException` 401/403 and raises a `RuntimeError` with an actionable message (missing `permissions: pull-requests: write` vs. invalid token) instead of a raw PyGithub traceback.
+- **Fork PR 401** — `pr-review.yml` skips the `brief` job for fork PRs; GitHub's security model forces a read-only token on `pull_request` events from forks regardless of the `permissions:` block.
+
 ## 0.1.2 — 2026-05-23
 
 ### Fixed
