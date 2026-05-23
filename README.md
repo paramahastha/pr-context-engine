@@ -7,8 +7,7 @@
 
 > An AI tool that reads every PR and writes the briefing — and the fixes — a senior engineer would, with the calibration data to prove it's not just guessing.
 
-<!-- Demo GIF goes here once recorded: docs/demo.gif -->
-<!-- ![Demo: PR getting briefed and a suggestion being one-click applied](docs/demo.gif) -->
+![Demo: PR getting briefed and a suggestion being one-click applied](docs/demo.png)
 
 ## What it does
 
