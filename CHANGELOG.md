@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## Unreleased
 
+## 0.1.4 — 2026-05-23
+
+### Fixed
+
+- **Risk scorer false positives** — Comment lines (including `#no-space` Python comments) and bare type/struct/class declarations are now skipped before the auth-keyword check, eliminating spurious `modifies_auth` flags on struct definitions and comment blocks.
+- **Auth flag noise** — `modifies_auth` is now deduplicated to one hit per file; large new store files no longer flood the briefing with dozens of identical flags.
+
+### Added
+
+- **`large_new_file` flag** — New files with 300+ added lines are flagged for explicit review.
+- **Briefing prompt improvements** — LLM is instructed to cover all change threads (not just the largest file), name changed type signatures explicitly, and avoid asking questions whose answers are already visible in the diff.
+
 ## 0.1.3 — 2026-05-23
 
 ### Fixed
