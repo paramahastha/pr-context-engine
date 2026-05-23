@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## Unreleased
 
+## 0.1.2 — 2026-05-23
+
+### Fixed
+
+- **Briefing parser** — Section headers are now matched after stripping markdown decoration (`**`, `##`, `__`). Groq's llama-3.3-70b wraps headers in bold/heading markdown despite prompt instructions, causing all four sections to parse as empty. The parser now normalises headers before matching, and logs the raw LLM response when all sections fail to aid future debugging.
+- **Prompt template** — Added explicit instruction prohibiting markdown decoration on section headers.
+
+## 0.1.1 — 2026-05-20
+
+### Fixed
+
+- **RAG + history quality** — Restored full per-file RAG chunk retrieval and git history; only the file list shown in the prompt is capped at 20 to respect the token budget.
+- **CI** — Cache fastembed embedding model in CI workflows to reduce cold-start time.
+
 ## 0.1.0 — 2026-05-17
 
 ### Added
