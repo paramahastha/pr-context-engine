@@ -33,6 +33,8 @@ Produce a briefing with exactly four sections:
 Rules:
 - Be terse. Aim for under 200 words total.
 - No praise. No "this looks good." No emojis except the section icons.
+- Output section headers exactly as shown above (e.g. "1. WHAT CHANGED"). Do NOT
+  wrap them in markdown (no **, no ##, no __). Plain text only.
 - If the PR is trivial (typo fix, doc change), say so in one line and skip
   the other sections.
 - Never speculate about things you can't see. If you don't have the context,
