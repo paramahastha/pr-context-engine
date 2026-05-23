@@ -31,8 +31,8 @@ pr-context-engine quickstart         # checks keys, scopes, prints what's missin
 
 ### Option A — GitHub Action (recommended)
 
-1. Get a free [Groq API key](https://console.groq.com/keys) — no credit card.
-2. Add it as a secret: **Settings → Secrets → Actions → New secret** → `GROQ_API_KEY`.
+1. Pick a provider and get an API key (see table below).
+2. Add it as a secret: **Settings → Secrets → Actions → New secret**.
 3. Enable write permissions: **Settings → Actions → General → Workflow permissions → Read and write**.
 4. Add this to `.github/workflows/pr-briefing.yml`:
 
@@ -50,10 +50,12 @@ jobs:
     steps:
       - uses: paramahastha/pr-context-engine@main
         with:
-          groq-api-key: ${{ secrets.GROQ_API_KEY }}
+          groq-api-key: ${{ secrets.GROQ_API_KEY }}   # default provider
 ```
 
 That's it. Every new PR gets a briefing comment automatically.
+
+> **Using a different provider?** Set `llm-provider` to match your key — see [Switching LLM providers](#switching-llm-providers) below.
 
 ### Option B — CLI (any CI or local)
 
@@ -131,16 +133,44 @@ See [docs/architecture.md](docs/architecture.md) for the full Mermaid diagram an
 
 ## Switching LLM providers
 
-Set `LLM_PROVIDER` to any of `groq` (default), `gemini`, `ollama`, or `anthropic`. Nothing downstream changes.
+| Provider | Secret name | `llm-provider` value | Notes |
+|---|---|---|---|
+| `groq` *(default)* | `GROQ_API_KEY` | `groq` | Free, ~1 000 req/day, fast |
+| `gemini` | `GEMINI_API_KEY` | `gemini` | Free-tier, ~1 500 req/day |
+| `anthropic` | `ANTHROPIC_API_KEY` | `anthropic` | BYO key, no free tier |
+| `ollama` | — | `ollama` | Local, offline, no rate limits |
 
-| Provider | Key env var | Notes |
-|---|---|---|
-| `groq` *(default)* | `GROQ_API_KEY` | Free, ~1 000 req/day, fast |
-| `gemini` | `GEMINI_API_KEY` | Free-tier fallback; auto-engaged on Groq 429 |
-| `ollama` | — | Local, offline, no rate limits |
-| `anthropic` | `ANTHROPIC_API_KEY` | BYO key, no free tier |
+**You must set both `llm-provider` and the matching API key input.** Providing only the key without `llm-provider` will fail because the default provider is `groq`.
 
-**Automatic failover:** if `GEMINI_API_KEY` is set, the tool fails over to Gemini on any Groq 429 or error and logs which provider was used in the PR comment footer. See [ADR-7](docs/design-decisions.md#adr-7-provider-failover-order-and-motivation).
+**GitHub Action examples:**
+
+```yaml
+# Gemini
+- uses: paramahastha/pr-context-engine@main
+  with:
+    llm-provider: gemini
+    gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+
+# Anthropic
+- uses: paramahastha/pr-context-engine@main
+  with:
+    llm-provider: anthropic
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+# Ollama (self-hosted)
+- uses: paramahastha/pr-context-engine@main
+  with:
+    llm-provider: ollama
+    ollama-base-url: http://my-ollama-host:11434
+```
+
+**CLI / env var:**
+
+```bash
+LLM_PROVIDER=gemini GEMINI_API_KEY=<key> pr-context-engine review --pr 42 --repo owner/name
+```
+
+**Automatic failover:** if `GEMINI_API_KEY` is set alongside any other provider, Gemini is used as a fallback on rate-limit errors. The PR comment footer shows which provider was actually used. See [ADR-7](docs/design-decisions.md#adr-7-provider-failover-order-and-motivation).
 
 ## Fix suggestions (opt-in)
 

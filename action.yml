@@ -4,11 +4,22 @@ author: paramahastha
 
 inputs:
   groq-api-key:
-    description: Groq API key (free at https://console.groq.com/keys). Required unless gemini-api-key is set.
+    description: Groq API key (free at https://console.groq.com/keys).
     required: false
   gemini-api-key:
-    description: Google Gemini API key. Used as failover when Groq is rate-limited.
+    description: Google Gemini API key (https://aistudio.google.com/apikey).
     required: false
+  anthropic-api-key:
+    description: Anthropic API key. Required when llm-provider=anthropic.
+    required: false
+  ollama-base-url:
+    description: Ollama server URL. Used when llm-provider=ollama.
+    required: false
+    default: "http://localhost:11434"
+  ollama-model:
+    description: Ollama model name. Used when llm-provider=ollama.
+    required: false
+    default: "qwen2.5-coder:7b"
   github-token:
     description: GitHub token with pull-requests:write. Defaults to the built-in GITHUB_TOKEN.
     required: false
@@ -18,7 +29,10 @@ inputs:
     required: false
     default: "false"
   llm-provider:
-    description: Primary LLM provider — groq | gemini | ollama | anthropic (default groq).
+    description: >
+      Primary LLM provider — groq | gemini | anthropic | ollama (default: groq).
+      Must match the API key you provide: set gemini + gemini-api-key,
+      anthropic + anthropic-api-key, etc.
     required: false
     default: "groq"
 
@@ -56,6 +70,9 @@ runs:
         GITHUB_TOKEN: ${{ inputs.github-token }}
         GROQ_API_KEY: ${{ inputs.groq-api-key }}
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OLLAMA_BASE_URL: ${{ inputs.ollama-base-url }}
+        OLLAMA_MODEL: ${{ inputs.ollama-model }}
         LLM_PROVIDER: ${{ inputs.llm-provider }}
         ENABLE_FIXES: ${{ inputs.enable-fixes }}
       run: >
