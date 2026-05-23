@@ -1,0 +1,10 @@
+{
+  "id": "01-simple-refactor",
+  "title": "Rename process_data to transform_data for naming consistency",
+  "description": "Renames the core processing method to align with the transform_ naming convention used across the service layer.",
+  "diff": "diff --git a/src/services/data_service.py b/src/services/data_service.py\nindex a1b2c3d..e4f5g6h 100644\n--- a/src/services/data_service.py\n+++ b/src/services/data_service.py\n@@ -15,7 +15,7 @@ class DataService:\n     def __init__(self, db: Database) -> None:\n         self.db = db\n \n-    def process_data(self, records: list[dict]) -> list[dict]:\n+    def transform_data(self, records: list[dict]) -> list[dict]:\n         \"\"\"Apply transformations to incoming records before persisting.\"\"\"\n         result = []\n         for record in records:\n@@ -42,7 +42,7 @@ class DataService:\n \n def run_pipeline(service: DataService, raw_data: list[dict]) -> None:\n     \"\"\"Top-level ETL runner called by the scheduled job.\"\"\"\n-    transformed = service.process_data(raw_data)\n+    transformed = service.transform_data(raw_data)\n     service.db.bulk_insert(transformed)\ndiff --git a/tests/test_data_service.py b/tests/test_data_service.py\nindex 1111111..2222222 100644\n--- a/tests/test_data_service.py\n+++ b/tests/test_data_service.py\n@@ -18,5 +18,5 @@ def test_transform_records():\n     service = DataService(db=FakeDB())\n-    result = service.process_data([{\"id\": 1}, {\"id\": None}])\n+    result = service.transform_data([{\"id\": 1}, {\"id\": None}])\n     assert len(result) == 1\n     assert result[0][\"id\"] == 1\n",
+  "expected_risk_flags": [],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Pure rename; no logic changes. All call sites updated including tests. Briefing should describe the intent (naming consistency) not just 'renamed a method'. Questions should probe: are there other callers not shown in the diff? Is this a public API used by other services? Any serialized references to the old name?"
+}

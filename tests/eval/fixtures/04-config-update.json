@@ -1,0 +1,10 @@
+{
+  "id": "04-config-update",
+  "title": "Tighten rate limits in production config",
+  "description": "Reduces the global API rate limit from 1000 to 200 req/min and adds per-endpoint overrides for the upload and search endpoints.",
+  "diff": "diff --git a/config.yaml b/config.yaml\nindex aaaaaaa..bbbbbbb 100644\n--- a/config.yaml\n+++ b/config.yaml\n@@ -5,10 +5,14 @@ server:\n   port: 8080\n \n rate_limiting:\n-  global_rpm: 1000\n+  global_rpm: 200\n   burst_multiplier: 1.5\n+  per_endpoint:\n+    /api/v2/upload:\n+      rpm: 20\n+    /api/v2/search:\n+      rpm: 50\n   storage: redis\n   redis_url: ${REDIS_URL}\n \n@@ -18,4 +22,5 @@ logging:\n   level: info\n   format: json\n+  include_request_id: true\n",
+  "expected_risk_flags": ["changes_config"],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Reduces global rate limit 5x and adds per-endpoint caps. This is a production config change. Briefing should flag that existing clients hitting >200 req/min will start getting 429s. Key questions: were clients notified? Is the burst_multiplier still correct with the lower base? Is the Redis key-space for the new per-endpoint limits compatible with the existing rate-limiter implementation?"
+}

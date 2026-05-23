@@ -1,0 +1,24 @@
+# Byte-compiled / cached Python
+__pycache__/
+*.py[cod]
+
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+
+# Virtual environment
+.venv/
+
+# Local secrets — never commit (see .env.example)
+.env
+
+# Test / tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# Generated codebase index (Milestone 5)
+index.db
+
+# Eval run output — generated on each run, not committed
+tests/eval/scores.jsonl

@@ -1,0 +1,10 @@
+{
+  "id": "14-env-file-update",
+  "title": "Update .env.example with new required configuration keys",
+  "description": "Documents the new STRIPE_API_KEY, REDIS_URL, and WEBHOOK_SECRET environment variables that are required for the payment and notification features added in the last sprint.",
+  "diff": "diff --git a/.env.example b/.env.example\nindex hhhhhhh..iiiiiii 100644\n--- a/.env.example\n+++ b/.env.example\n@@ -5,6 +5,14 @@ DATABASE_URL=postgresql://localhost/myapp_dev\n DEBUG=true\n SECRET_KEY=change-me-in-production\n \n+# Payment processing (required for checkout flow)\n+STRIPE_API_KEY=sk_test_replace_with_real_key\n+STRIPE_WEBHOOK_SECRET=whsec_replace_with_real_secret\n+\n+# Cache and rate limiting\n+REDIS_URL=redis://localhost:6379/0\n+\n+# Outbound webhook auth\n+WEBHOOK_SECRET=replace_with_random_32_char_string\n+\n # Feature flags\n ENABLE_ANALYTICS=false\n ENABLE_BETA_FEATURES=false\n",
+  "expected_risk_flags": ["changes_config", "modifies_auth"],
+  "known_bug": null,
+  "expected_trivial": false,
+  "human_notes": "Documents new required env vars. The changes_config flag fires because .env.example is at the root. The real risk here is that these env vars are now required in production but the deployment checklist and production secrets may not be updated yet. Briefing should note that STRIPE_API_KEY, REDIS_URL, and WEBHOOK_SECRET are newly required. Key questions: are these vars already set in prod/staging? Does the app fail loudly at startup if they're missing? Is SECRET_KEY=change-me-in-production a pattern that persists to production?"
+}

@@ -1,0 +1,68 @@
+name: PR Context Briefing
+description: Post a senior-engineer-style briefing on every pull request — what changed, blast radius, risk flags, and three sharp review questions.
+author: paramahastha
+
+inputs:
+  groq-api-key:
+    description: Groq API key (free at https://console.groq.com/keys). Required unless gemini-api-key is set.
+    required: false
+  gemini-api-key:
+    description: Google Gemini API key. Used as failover when Groq is rate-limited.
+    required: false
+  github-token:
+    description: GitHub token with pull-requests:write. Defaults to the built-in GITHUB_TOKEN.
+    required: false
+    default: ${{ github.token }}
+  enable-fixes:
+    description: Set to 'true' to generate opt-in, confidence-gated fix suggestions (default off).
+    required: false
+    default: "false"
+  llm-provider:
+    description: Primary LLM provider — groq | gemini | ollama | anthropic (default groq).
+    required: false
+    default: "groq"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 50
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Restore embedding model cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/fastembed
+        key: fastembed-bge-small-en-v1.5
+
+    - name: Restore index cache
+      uses: actions/cache@v4
+      with:
+        path: index.db
+        key: pr-engine-index-${{ github.event.pull_request.base.sha }}
+        restore-keys: pr-engine-index-
+
+    - name: Install pr-context-engine
+      shell: bash
+      run: pip install pr-context-engine
+
+    - name: Generate briefing
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GROQ_API_KEY: ${{ inputs.groq-api-key }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        LLM_PROVIDER: ${{ inputs.llm-provider }}
+        ENABLE_FIXES: ${{ inputs.enable-fixes }}
+      run: >
+        pr-context-engine review
+        --pr ${{ github.event.pull_request.number }}
+        --repo ${{ github.repository }}
+
+branding:
+  icon: eye
+  color: blue

@@ -1,0 +1,15 @@
+{
+  "id": "08-retry-no-limit",
+  "title": "Add automatic retry for transient failures in inventory API client",
+  "description": "Wraps the inventory service HTTP call in a retry loop to handle intermittent 503s during deployments.",
+  "diff": "diff --git a/src/clients/inventory_client.py b/src/clients/inventory_client.py\nindex 7777777..8888888 100644\n--- a/src/clients/inventory_client.py\n+++ b/src/clients/inventory_client.py\n@@ -1,5 +1,6 @@\n \"\"\"HTTP client for the inventory service.\"\"\"\n import logging\n+import time\n import requests\n \n logger = logging.getLogger(__name__)\n@@ -12,12 +13,22 @@ class InventoryClient:\n     def get_stock_level(self, sku: str) -> int:\n         \"\"\"Return current stock count for the given SKU.\"\"\"\n-        resp = self._session.get(\n-            f\"{self._base_url}/stock/{sku}\",\n-            timeout=3.0,\n-        )\n-        resp.raise_for_status()\n-        return resp.json()[\"count\"]\n+        while True:\n+            try:\n+                resp = self._session.get(\n+                    f\"{self._base_url}/stock/{sku}\",\n+                    timeout=3.0,\n+                )\n+                resp.raise_for_status()\n+                return resp.json()[\"count\"]\n+            except requests.HTTPError as exc:\n+                if exc.response is not None and exc.response.status_code == 503:\n+                    logger.warning(\"Inventory 503; retrying in 1s\")\n+                    time.sleep(1)\n+                    continue\n+                raise\n+            except requests.ConnectionError:\n+                logger.warning(\"Inventory connection error; retrying in 1s\")\n+                time.sleep(1)\n",
+  "expected_risk_flags": [],
+  "known_bug": {
+    "present": true,
+    "description": "The retry loop has no maximum attempt count. If the inventory service is down for an extended period, this call blocks indefinitely, stalling the caller thread (or coroutine) forever.",
+    "eligible_for_fix": false,
+    "correct_fix_description": "Add a max_retries counter (e.g., max_retries=5), raise after exhausting retries, and use exponential backoff instead of a fixed 1s sleep."
+  },
+  "expected_trivial": false,
+  "human_notes": "No heuristic flag fires here — this is a pure logic bug. The briefing's strength is in the QUESTIONS section: should catch that while True with no exit condition is dangerous. eligible_for_fix is false because no located RiskFlag exists to anchor a suggestion block."
+}

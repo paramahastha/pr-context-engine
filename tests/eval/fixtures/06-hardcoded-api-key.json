@@ -1,0 +1,15 @@
+{
+  "id": "06-hardcoded-api-key",
+  "title": "Add Stripe payment client integration",
+  "description": "Adds a payment.py module that wraps the Stripe SDK for one-time charge flows.",
+  "diff": "diff --git a/src/payments/payment.py b/src/payments/payment.py\nnew file mode 100644\nindex 0000000..cccddde\n--- /dev/null\n+++ b/src/payments/payment.py\n@@ -0,0 +1,30 @@\n+\"\"\"Stripe payment client for one-time charges.\"\"\"\n+import logging\n+import stripe\n+\n+logger = logging.getLogger(__name__)\n+\n+STRIPE_API_KEY = \"hardcoded-payment-api-key-do-not-commit-to-vcs\"\n+\n+\n+def init_stripe() -> None:\n+    \"\"\"Initialise the Stripe client with the hardcoded API key.\"\"\"\n+    stripe.api_key = STRIPE_API_KEY\n+\n+\n+def charge_customer(\n+    customer_id: str,\n+    amount_cents: int,\n+    currency: str = \"usd\",\n+    description: str = \"\",\n+) -> dict:\n+    \"\"\"Create a one-time charge for the given customer.\"\"\"\n+    init_stripe()\n+    charge = stripe.Charge.create(\n+        customer=customer_id,\n+        amount=amount_cents,\n+        currency=currency,\n+        description=description,\n+    )\n+    logger.info(\"Charge created: %s\", charge.id)\n+    return {\"charge_id\": charge.id, \"status\": charge.status}\n",
+  "expected_risk_flags": ["modifies_auth"],
+  "known_bug": {
+    "present": true,
+    "description": "The live Stripe API key is hardcoded as a string literal. It will be committed to version control, visible in CI logs, and accessible to anyone with repo read access.",
+    "eligible_for_fix": true,
+    "correct_fix_description": "Replace STRIPE_API_KEY = 'hardcoded-...' with STRIPE_API_KEY = os.environ.get('STRIPE_API_KEY', '') and add import os at the top of the file."
+  },
+  "expected_trivial": false,
+  "human_notes": "Critical security issue: live Stripe key committed to source. The modifies_auth heuristic fires because 'api_key' appears in an added line. Fix should replace the hardcoded string with os.environ.get('STRIPE_API_KEY'). A briefing that does not flag this explicitly is a failure."
+}
