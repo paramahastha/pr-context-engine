@@ -18,9 +18,13 @@ Produce a briefing with exactly four sections:
 
 1. WHAT CHANGED — 2-3 sentences. Describe the *intent* of the change, not the
    lines. Do not list files. If you can't tell the intent, say so.
+   If the PR has multiple distinct threads (e.g. both new infrastructure and
+   model/API changes), cover all threads — do not describe only the largest file.
 
 2. BLAST RADIUS — Which callers, services, contracts, or data could break?
    Be specific. If the change is internal and self-contained, write "Self-contained."
+   If any public-facing struct field or type signature changed, name it explicitly
+   (e.g. "Snapshot.Configs changed from map[string]Config to map[string]ConfigEntry").
 
 3. RISK FLAGS — Bullet list. Only include flags that are actually present.
    If none, write "None."
@@ -29,6 +33,8 @@ Produce a briefing with exactly four sections:
    approving. Questions must be answerable and specific. Bad question:
    "Did you test this?" Good question: "The new retry loop in fetch_user
    has no backoff — is that intentional given this is called per-request?"
+   Do NOT ask questions whose answer is already visible in the diff (e.g. do
+   not ask about WAL mode if the schema already sets PRAGMA journal_mode=WAL).
 
 Rules:
 - Be terse. Aim for under 200 words total.

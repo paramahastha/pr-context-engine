@@ -27,6 +27,18 @@ _FUNC_DEF_RE = re.compile(
 
 _MIGRATION_MARKERS = ("migrations/", "alembic/", "alembic_migrations/")
 
+# Lines that look auth-related by keyword but carry no real risk:
+# - comment lines (//  #  /*  *  <!--)
+# - bare type/struct/class/interface declarations
+_COMMENT_LINE_RE = re.compile(r"^\s*(?://|/\*|\*+/?\s|#|<!--)")
+_TYPE_DECL_RE = re.compile(
+    r"^\s*type\s+\w+\s+(?:struct|interface)\b"  # Go struct/interface
+    r"|^\s*type\s+\w+\s*(?:=|\b(?:int|string|float|bool)\b)"  # Go type alias/definition
+    r"|^\s*(?:class|interface)\s+\w+"  # Python / JS / TS
+)
+
+_LARGE_NEW_FILE_THRESHOLD = 300  # added lines; new files above this warrant explicit review
+
 
 @dataclass
 class RiskFlag:
@@ -64,6 +76,26 @@ def _is_config(path: str) -> bool:
     return False
 
 
+def _dedup_flags(flags: list[RiskFlag]) -> list[RiskFlag]:
+    """Deduplicate flags where one occurrence per file is enough.
+
+    modifies_auth fires once per matching line and can produce dozens of hits
+    in a large file (e.g. a new store implementation).  Keeping only the first
+    match per file preserves the signal while eliminating fix-suggestion spam.
+    Other flag types are kept as-is because each occurrence is independently
+    meaningful (e.g. multiple deletes_public_api deletions).
+    """
+    seen_auth_files: set[str] = set()
+    result: list[RiskFlag] = []
+    for flag in flags:
+        if flag.flag == "modifies_auth":
+            if flag.file in seen_auth_files:
+                continue
+            seen_auth_files.add(flag.file)
+        result.append(flag)
+    return result
+
+
 def score(changes: list[FileChange]) -> list[RiskFlag]:
     """Return all risk flags detected across the list of file changes."""
     flags: list[RiskFlag] = []
@@ -79,6 +111,16 @@ def score(changes: list[FileChange]) -> list[RiskFlag]:
                 RiskFlag(flag="changes_config", file=change.path, line=None, snippet=change.path)
             )
 
+        if change.is_new_file and len(change.added_lines) >= _LARGE_NEW_FILE_THRESHOLD:
+            flags.append(
+                RiskFlag(
+                    flag="large_new_file",
+                    file=change.path,
+                    line=None,
+                    snippet=f"{len(change.added_lines)} lines added — review for correctness and completeness",
+                )
+            )
+
         for hunk in change.hunks:
             new_lineno = hunk.new_start
             old_lineno = hunk.old_start
@@ -86,6 +128,10 @@ def score(changes: list[FileChange]) -> list[RiskFlag]:
             for raw in hunk.lines:
                 if raw.startswith("+") and not raw.startswith("+++"):
                     content = raw[1:]
+                    stripped = content.strip()
+                    if _COMMENT_LINE_RE.match(stripped) or _TYPE_DECL_RE.match(stripped):
+                        new_lineno += 1
+                        continue
                     if _AUTH_RE.search(content):
                         flags.append(
                             RiskFlag(
@@ -118,4 +164,4 @@ def score(changes: list[FileChange]) -> list[RiskFlag]:
                     new_lineno += 1
                     old_lineno += 1
 
-    return flags
+    return _dedup_flags(flags)
