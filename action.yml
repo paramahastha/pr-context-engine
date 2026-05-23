@@ -33,6 +33,12 @@ runs:
       with:
         python-version: "3.12"
 
+    - name: Restore embedding model cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/fastembed
+        key: fastembed-bge-small-en-v1.5
+
     - name: Restore index cache
       uses: actions/cache@v4
       with:
