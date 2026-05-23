@@ -201,3 +201,58 @@ def test_parse_sections_with_section_header_variations():
     assert "All modules" in sections["blast_radius"]
     assert "None" in sections["risk_flags"]
     assert "Done" in sections["questions"]
+
+
+# --- Regression tests for markdown-decorated headers (llama-3.3-70b production failure) ---
+# When all sections were empty in prod, the LLM had wrapped headers in ** or ##.
+# The parser now normalizes lines before matching so these all parse correctly.
+
+def test_parse_sections_bold_markdown_headers():
+    """Regression: LLM wraps headers in ** markdown (e.g. **1. WHAT CHANGED**)."""
+    response = (
+        "**1. WHAT CHANGED**\nAdded OAuth support.\n\n"
+        "**2. BLAST RADIUS**\nAll login flows.\n\n"
+        "**3. RISK FLAGS**\n- Touches auth\n\n"
+        "**4. QUESTIONS**\n1. Token expiry?\n2. Revocation?\n3. Tests?"
+    )
+
+    sections = _parse_sections(response)
+
+    assert "OAuth" in sections["what_changed"]
+    assert "login flows" in sections["blast_radius"]
+    assert "Touches auth" in sections["risk_flags"]
+    assert "Token expiry" in sections["questions"]
+
+
+def test_parse_sections_heading_markdown_headers():
+    """Regression: LLM uses ## heading syntax for section headers."""
+    response = (
+        "## 1. WHAT CHANGED\nRefactored caching.\n\n"
+        "## 2. BLAST RADIUS\nCache-dependent endpoints.\n\n"
+        "## 3. RISK FLAGS\n- Invalidation risk\n\n"
+        "## 4. QUESTIONS\n1. TTL correct?\n2. Eviction policy?\n3. Metrics?"
+    )
+
+    sections = _parse_sections(response)
+
+    assert "caching" in sections["what_changed"]
+    assert "Cache-dependent" in sections["blast_radius"]
+    assert "Invalidation" in sections["risk_flags"]
+    assert "TTL" in sections["questions"]
+
+
+def test_parse_sections_mixed_case_headers():
+    """Regression: LLM uses mixed case (e.g. '1. What Changed')."""
+    response = (
+        "1. What Changed\nDropped legacy endpoint.\n\n"
+        "2. Blast Radius\nExternal API consumers.\n\n"
+        "3. Risk Flags\n- Breaking change\n\n"
+        "4. Questions\n1. Versioned?\n2. Deprecation notice?\n3. Clients notified?"
+    )
+
+    sections = _parse_sections(response)
+
+    assert "legacy endpoint" in sections["what_changed"]
+    assert "External API" in sections["blast_radius"]
+    assert "Breaking" in sections["risk_flags"]
+    assert "Versioned" in sections["questions"]

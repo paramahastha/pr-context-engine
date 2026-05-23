@@ -1,5 +1,6 @@
 """Generate structured PR briefings using LLM with senior-voice prompting."""
 import logging
+import re
 from dataclasses import dataclass
 
 from src.analyzers.diff_parser import FileChange
@@ -162,6 +163,14 @@ def _assemble_prompt(
     return prompt
 
 
+_MARKDOWN_DECORATION_RE = re.compile(r"^[#*_`>\s]+|[*_`]+$")
+
+
+def _normalize_header_line(line: str) -> str:
+    """Strip markdown decoration (##, **, __, etc.) so headers match regardless of LLM formatting."""
+    return _MARKDOWN_DECORATION_RE.sub("", line.strip()).strip()
+
+
 def _parse_sections(response: str) -> dict[str, str]:
     """Parse LLM response into section keys.
 
@@ -196,11 +205,12 @@ def _parse_sections(response: str) -> dict[str, str]:
     found_sections = set()
 
     for line in lines:
-        # Check if this line starts a new section (full header match only)
+        # Normalize away markdown decoration before matching — LLMs often wrap
+        # headers in ** or ## even when instructed not to.
         section_found = False
-        stripped = line.strip()
+        normalized = _normalize_header_line(line).upper()
         for section_header, section_key in section_headers:
-            if stripped.startswith(section_header):
+            if normalized.startswith(section_header):
                 # Save the previous section content
                 if current_section:
                     sections[current_section] = "\n".join(current_content).strip()
@@ -222,6 +232,8 @@ def _parse_sections(response: str) -> dict[str, str]:
     missing = set(sections.keys()) - found_sections
     if missing:
         logger.warning("Missing expected sections in LLM response: %s", ", ".join(sorted(missing)))
+        if len(missing) == len(sections):
+            logger.warning("Raw LLM response (all sections unparsed):\n%s", response)
 
     return sections
 
