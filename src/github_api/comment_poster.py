@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import requests
 from github import Auth, Github
+from github import GithubException
 
 from src.github_api import GITHUB_API_URL
 
@@ -53,8 +54,23 @@ def post_pr_comment(repo: str, pr_number: int, body: str, github_token: str) -> 
     """
     logger.info("Posting comment to %s PR #%d", repo, pr_number)
     gh = Github(auth=Auth.Token(github_token))
-    pull_request = gh.get_repo(repo).get_pull(pr_number)
-    pull_request.create_issue_comment(body)
+    try:
+        pull_request = gh.get_repo(repo).get_pull(pr_number)
+        pull_request.create_issue_comment(body)
+    except GithubException as exc:
+        if exc.status == 401:
+            raise RuntimeError(
+                "GitHub returned 401 Bad credentials. "
+                "Ensure your workflow grants `permissions: pull-requests: write` "
+                "and that GITHUB_TOKEN (or github-token input) is a valid token."
+            ) from exc
+        if exc.status == 403:
+            raise RuntimeError(
+                "GitHub returned 403 Forbidden. "
+                "The token lacks `pull-requests: write` permission. "
+                "Add `permissions: pull-requests: write` to the calling workflow job."
+            ) from exc
+        raise
 
 
 def format_fix_section(suggestions: list[FixSuggestion], extra_count: int = 0) -> str:

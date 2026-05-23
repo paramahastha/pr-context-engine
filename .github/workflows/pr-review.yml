@@ -21,6 +21,8 @@ jobs:
 
   brief:
     needs: lint
+    # Fork PRs get a read-only GITHUB_TOKEN regardless of `permissions:` — skip rather than 401.
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
