@@ -21,7 +21,10 @@ inputs:
     required: false
     default: "qwen2.5-coder:7b"
   github-token:
-    description: GitHub token with pull-requests:write. Defaults to the built-in GITHUB_TOKEN.
+    description: >
+      GitHub token with pull-requests:write permission. Defaults to the built-in GITHUB_TOKEN.
+      Your calling workflow MUST include `permissions: pull-requests: write` or the comment
+      post will fail with a 401/403 error.
     required: false
     default: ${{ github.token }}
   enable-fixes:
@@ -67,7 +70,10 @@ runs:
     - name: Generate briefing
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
+        # Prefer the explicit input; fall back to the calling workflow's built-in token.
+        # The calling workflow MUST grant `permissions: pull-requests: write` for
+        # the token to have enough scope to post a comment.
+        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
         GROQ_API_KEY: ${{ inputs.groq-api-key }}
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
